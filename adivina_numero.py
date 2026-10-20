@@ -8,6 +8,8 @@ DIFFICULTIES = {
     "2": {"name": "Medio", "minimum": 1, "maximum": 50, "attempts": 7},
     "3": {"name": "Difícil", "minimum": 1, "maximum": 100, "attempts": 6},
 }
+YES_ANSWERS = {"s", "si", "sí"}
+NO_ANSWERS = {"n", "no"}
 
 
 def get_player_name():
@@ -17,80 +19,109 @@ def get_player_name():
     return name
 
 
-def choose_difficulty():
+def show_difficulty_menu():
     print("\nSelecciona una dificultad:")
-    print("1. Fácil (1–20, 8 intentos)")
-    print("2. Medio (1–50, 7 intentos)")
-    print("3. Difícil (1–100, 6 intentos)")
+    for key, settings in DIFFICULTIES.items():
+        print(
+            f"{key}. {settings['name']} "
+            f"({settings['minimum']}–{settings['maximum']}, "
+            f"{settings['attempts']} intentos)"
+        )
 
-    choice = input("Opción: ").lower()
-    if choice in DIFFICULTIES:
-        return DIFFICULTIES[choice]
 
-    print("Opción inválida. Se usará la dificultad Fácil.")
-    return DIFFICULTIES["2"]
+def choose_difficulty():
+    show_difficulty_menu()
+
+    while True:
+        choice = input("Opción: ").strip()
+        if choice in DIFFICULTIES:
+            return DIFFICULTIES[choice]
+
+        valid_options = ", ".join(DIFFICULTIES)
+        print(f"Opción inválida. Elige una de estas opciones: {valid_options}.")
 
 
 def read_guess(minimum, maximum):
+    """Devuelve un entero dentro del rango, o None si la entrada no es válida."""
     raw_guess = input(f"Escribe un número entre {minimum} y {maximum}: ").strip()
-    if raw_guess.isdigit():
-        return int(raw_guess)
 
-    print("La entrada debe ser un número entero.")
-    return None
+    try:
+        guess = int(raw_guess)
+    except ValueError:
+        print("La entrada debe ser un número entero. No cuenta como intento.")
+        return None
+
+    if guess < minimum or guess > maximum:
+        print(
+            f"El número debe estar entre {minimum} y {maximum}. "
+            "No cuenta como intento."
+        )
+        return None
+
+    return guess
+
+
+def evaluate_guess(guess, secret_number):
+    """Devuelve 'low', 'high' o 'correct'."""
+    if guess < secret_number:
+        return "low"
+    if guess > secret_number:
+        return "high"
+    return "correct"
 
 
 def calculate_score(attempts_used, maximum_attempts, won):
-    if won is False:
+    if not won:
         return 0
+    return (maximum_attempts - attempts_used) * 10
 
-    points = (maximum_attempts - attempts_used) * 10
-    if points < 0:
-        points = 0
-    return points
+
+def show_round_result(result):
+    if result["won"]:
+        word = "intento" if result["attempts"] == 1 else "intentos"
+        print(f"Adivinaste en {result['attempts']} {word}.")
+    else:
+        print(f"Se acabaron los intentos. El número era {result['secret_number']}.")
 
 
 def play_round(settings):
     secret_number = random.randint(settings["minimum"], settings["maximum"])
+    max_attempts = settings["attempts"]
     attempts_used = 0
-    guess = None
     won = False
 
     print(
         f"\nAdivina el número entre {settings['minimum']} y "
-        f"{settings['maximum']}. Tienes {settings['attempts']} intentos."
+        f"{settings['maximum']}. Tienes {max_attempts} intentos."
     )
 
-    while attempts_used <= settings["attempts"] and won is False:
+    while attempts_used < max_attempts and not won:
         guess = read_guess(settings["minimum"], settings["maximum"])
-        attempts_used += 1
-
         if guess is None:
             continue
-        elif guess < settings["minimum"]:
-            print("El número es menor que el rango permitido.")
-        elif guess > settings["maximum"]:
-            print("El número es mayor que el rango permitido.")
-        elif guess < secret_number:
+
+        attempts_used += 1
+        outcome = evaluate_guess(guess, secret_number)
+
+        if outcome == "low":
             print("Muy bajo.")
-        elif guess > secret_number:
+        elif outcome == "high":
             print("Muy alto.")
         else:
             print("¡Correcto!")
             won = True
 
-    if won:
-        print(f"Adivinaste en {attempts_used} intentos.")
-    else:
-        print(f"Se acabaron los intentos. El número era {secret_number}.")
+        if not won and attempts_used < max_attempts:
+            print(f"Intentos restantes: {max_attempts - attempts_used}")
 
-    score = calculate_score(attempts_used, settings["attempts"], won)
-    return {
+    result = {
         "won": won,
         "attempts": attempts_used,
-        "score": score,
+        "score": calculate_score(attempts_used, max_attempts, won),
         "secret_number": secret_number,
     }
+    show_round_result(result)
+    return result
 
 
 def save_score(scores, player_name, result, difficulty_name):
@@ -128,10 +159,13 @@ def play_game(scores):
 
 
 def ask_to_play_again():
-    answer = input("\n¿Quieres jugar otra vez? (s/n): ").lower()
-    if answer == "s" or answer == "si" or answer == "sí":
-        return True
-    return False
+    while True:
+        answer = input("\n¿Quieres jugar otra vez? (s/n): ").strip().lower()
+        if answer in YES_ANSWERS:
+            return True
+        if answer in NO_ANSWERS:
+            return False
+        print("Respuesta inválida. Escribe 's' para sí o 'n' para no.")
 
 
 def main():
@@ -141,10 +175,11 @@ def main():
 
     while True:
         play_game(scores)
-        if ask_to_play_again() is False:
+        if not ask_to_play_again():
             break
 
     print("\nGracias por jugar.")
 
 
-main()
+if __name__ == "__main__":
+    main()
