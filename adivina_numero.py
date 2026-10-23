@@ -72,8 +72,7 @@ def get_hint(guess, secret_number):
 def calculate_score(attempts_used, maximum_attempts, won):
     if not won:
         return 0
-    remaining_attempts = maximum_attempts - attempts_used
-    return max(remaining_attempts, 0) * POINTS_PER_REMAINING_ATTEMPT
+    return (maximum_attempts - attempts_used + 1) * 10
 
 
 def play_round(settings):
