@@ -73,7 +73,7 @@ def evaluate_guess(guess, secret_number):
 def calculate_score(attempts_used, maximum_attempts, won):
     if not won:
         return 0
-    return (maximum_attempts - attempts_used) * 10
+    return (maximum_attempts - attempts_used + 1) * 10
 
 
 def show_round_result(result):
